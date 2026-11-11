@@ -1,0 +1,224 @@
+[
+  {
+    "name": "off does not cancel the waiting commands of its lamp",
+    "file": "src/link.js",
+    "from": "if (!other.protective && other.zone === zone && other.id < id) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "off not in front of the other commands",
+    "file": "src/link.js",
+    "from": "        if (firstOther === -1) this.queue.push(job);\n        else this.queue.splice(firstOther, 0, job);\n      } else {",
+    "to": "        this.queue.push(job);\n      } else {"
+  },
+  {
+    "name": "an older command sent again after an off",
+    "file": "src/link.js",
+    "from": "(!job.protective && (this.lastProtective.get(job.zone) ?? 0) > job.id)",
+    "to": "false"
+  },
+  {
+    "name": "a command sent again over a newer one of its lamp",
+    "file": "src/link.js",
+    "from": "(this.lastSent.get(job.zone) ?? 0) > job.id ||",
+    "to": ""
+  },
+  {
+    "name": "no gap between datagrams",
+    "file": "src/link.js",
+    "from": "const wait = this.lastSendAt + this.timings.gap - now;",
+    "to": "const wait = 0;"
+  },
+  {
+    "name": "a command started after its budget",
+    "file": "src/link.js",
+    "from": "if (job.sent === 0 && job.startBy !== undefined && now > job.startBy) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "no queue bound",
+    "file": "src/link.js",
+    "from": "if (this.queue.filter((j) => !j.protective).length >= LIMITS.queue) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "identity not checked before the datagram",
+    "file": "src/link.js",
+    "from": "if (!job.protective && job.guard && !job.guard()) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "any acknowledgement counts (sequence number ignored)",
+    "file": "src/link.js",
+    "from": "const waiter = this.ackWaiters.get(seq);",
+    "to": "const waiter = this.ackWaiters.values().next().value;"
+  },
+  {
+    "name": "answers from another address or port accepted",
+    "file": "src/link.js",
+    "from": "if (rinfo.address !== host || rinfo.port !== port || msg.length > LIMITS.datagram) return;",
+    "to": "if (msg.length > LIMITS.datagram) return;"
+  },
+  {
+    "name": "a missing acknowledgement does not renew the session",
+    "file": "src/link.js",
+    "from": "    // A missing acknowledgement: the session may have expired, asked again next time.\n    this.session = undefined;",
+    "to": ""
+  },
+  {
+    "name": "a session never asked again when idle",
+    "file": "src/link.js",
+    "from": "const fresh = this.monotonic() - this.lastContact < this.timings.sessionFresh;",
+    "to": "const fresh = true;"
+  },
+  {
+    "name": "a command never sent again when its acknowledgement is missing",
+    "file": "src/link.js",
+    "from": "if (!job.retried && !job.protective && time > this.timings.ackWait && !this.overtaken(job)) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "success without acknowledgement on a v6 bridge",
+    "file": "src/app.js",
+    "from": "if (link.v6 && !result.acked) throw commandError(ERRORS.unconfirmed);",
+    "to": ""
+  },
+  {
+    "name": "identity always taken as right",
+    "file": "src/app.js",
+    "from": "return !this.memory.mac || !this.seenMac || this.memory.mac === this.seenMac;",
+    "to": "return true;"
+  },
+  {
+    "name": "non-protective v6 command without /data read",
+    "file": "src/app.js",
+    "from": "if (bridge.version === VERSIONS.V6 && !this.memory) throw commandError(ERRORS.storeUnread);",
+    "to": ""
+  },
+  {
+    "name": "off resend over a newer command that left",
+    "file": "src/app.js",
+    "from": "if ((link.lastSent.get(zone) ?? 0) > id) {\n              // A newer command of the lamp left: no resend over it.",
+    "to": "if (false) {"
+  },
+  {
+    "name": "off sent once only",
+    "file": "src/constants.js",
+    "from": "offResends: [500, 1500],",
+    "to": "offResends: [],"
+  },
+  {
+    "name": "off not held when unconfirmed",
+    "file": "src/app.js",
+    "from": "    this.hold(zone, id, this.timings.heldFor, { at: this.now() });\n",
+    "to": "\n"
+  },
+  {
+    "name": "held off sent again once only",
+    "file": "src/app.js",
+    "from": "if (again && this.held.get(zone) === entry && !this.stopped) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "held off never given up",
+    "file": "src/app.js",
+    "from": "    if (this.monotonic() >= entry.until) {\n      this.release(zone, { lost: true });\n      return false;\n    }\n    if (!bridge) return true;",
+    "to": "    if (!bridge) return true;"
+  },
+  {
+    "name": "held off kept over a newer command that left",
+    "file": "src/app.js",
+    "from": "if (entry && left > entry.id) this.release(id, { lost: false });",
+    "to": ""
+  },
+  {
+    "name": "held off from /data waits 30 s after a restart",
+    "file": "src/app.js",
+    "from": "this.hold(id, this.seq, this.timings.heldFor - (wall - at), { at, now: true });",
+    "to": "this.hold(id, this.seq, this.timings.heldFor - (wall - at), { at });"
+  },
+  {
+    "name": "off needs the configuration read",
+    "file": "src/app.js",
+    "from": "    return this.config.bridge ?? this.memory?.bridge;",
+    "to": "    return this.config.bridge;"
+  },
+  {
+    "name": "late confirmation not published",
+    "file": "src/app.js",
+    "from": "await this.publishAssumed(lamp, FEATURES.BINARY, 0);",
+    "to": ""
+  },
+  {
+    "name": "unreadable /data taken as empty",
+    "file": "src/app.js",
+    "from": "      if (!result.ok) {\n        this.storeFailed = true;",
+    "to": "      if (false) {\n        this.storeFailed = true;"
+  },
+  {
+    "name": "new bridge accepted without saving it",
+    "file": "src/app.js",
+    "from": "if (!(await this.saveMemory())) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "new bridge accepted at the first click",
+    "file": "src/app.js",
+    "from": "if (pending && pending.mac === seen && mono - pending.at < this.timings.acceptWithin) {",
+    "to": "if (true) {"
+  },
+  {
+    "name": "Test button not spaced",
+    "file": "src/app.js",
+    "from": "if (mono - this.lastTestAt < this.timings.testSpacing) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "check at once after a restart",
+    "file": "src/app.js",
+    "from": "this.nextCheckAt = mono + Math.max(0, this.timings.checkInterval - since);",
+    "to": "this.nextCheckAt = mono;"
+  },
+  {
+    "name": "check time not written to /data",
+    "file": "src/app.js",
+    "from": "      this.memory.lastCheckAt = this.now();\n",
+    "to": "\n"
+  },
+  {
+    "name": "getConfig() not tried again",
+    "file": "src/app.js",
+    "from": "        if (!this.stopped) this.readConfig(getConfig);",
+    "to": "        void getConfig;"
+  },
+  {
+    "name": "broadcast address accepted",
+    "file": "src/config.js",
+    "from": "    octets[3] === 255 ||\n",
+    "to": ""
+  },
+  {
+    "name": "brightness 0 accepted",
+    "file": "src/constants.js",
+    "from": "export const BRIGHTNESS = { min: 1, max: 100 };",
+    "to": "export const BRIGHTNESS = { min: 0, max: 100 };"
+  },
+  {
+    "name": "a time in the future of /data accepted",
+    "file": "src/store.js",
+    "from": "Number.isFinite(value) && value > 0 && value <= now ? value : undefined;",
+    "to": "Number.isFinite(value) && value > 0 ? value : undefined;"
+  },
+  {
+    "name": "wrong v6 checksum",
+    "file": "src/protocol.js",
+    "from": "const checksum = body.reduce((sum, b) => sum + b, 0) & 0xff;",
+    "to": "const checksum = 0;"
+  },
+  {
+    "name": "a newer off does not take over the hold",
+    "file": "src/app.js",
+    "from": "if (this.lastOff.get(zone) !== id) throw commandError(ERRORS.offUnconfirmed);",
+    "to": ""
+  }
+]

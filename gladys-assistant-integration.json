@@ -1,177 +1,267 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "MiLight",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "MiLight / LimitlessLED lamps through their Wi-Fi bridge, on the local network.",
+    "fr": "Lampes MiLight / LimitlessLED par leur pont Wi-Fi, sur le réseau local."
   },
-  "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "version": "0.1.0",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-milight:0.1.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-milight/main/cover.png",
+  "categories": ["lighting"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Getting started",
+        "fr": "Pour commencer"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Give the IP address of the MiLight Wi-Fi bridge (fixed in your router) and tick the zones of your lamps (the groups 1 to 4 of the remote). MiLight lamps never report their state: Gladys shows the last command sent.",
+        "fr": "Indiquez l’adresse IP du pont Wi-Fi MiLight (fixée dans votre box) et cochez les zones de vos lampes (les groupes 1 à 4 de la télécommande). Les lampes MiLight ne donnent jamais leur état : Gladys affiche la dernière commande envoyée."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://github.com/LM1LC3N7/gladys-milight/blob/main/docs/en.md",
+          "label": {
+            "en": "Documentation",
+            "fr": "Documentation"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "bridge_address",
+      "type": "string",
+      "label": {
+        "en": "Bridge IP address",
+        "fr": "Adresse IP du pont"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "description": {
+        "en": "IPv4 address of the bridge on the local network, with an optional port (5987 for a v6 bridge, 8899 for a legacy one by default).",
+        "fr": "Adresse IPv4 du pont sur le réseau local, port facultatif (5987 pour un pont v6, 8899 pour un ancien par défaut)."
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.50",
+        "fr": "ex. 192.168.1.50"
+      },
+      "required": true
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
-      },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
-    },
-    {
-      "key": "unit",
+      "key": "bridge_version",
       "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
+      "label": {
+        "en": "Bridge model",
+        "fr": "Modèle du pont"
+      },
+      "description": {
+        "en": "v6: iBox 1 (with a lamp), iBox 2 and the bridges sold since 2016. Legacy: Wi-Fi bridges v3 to v5.",
+        "fr": "v6 : iBox 1 (avec lampe), iBox 2 et les ponts vendus depuis 2016. Ancien : ponts Wi-Fi v3 à v5."
+      },
       "required": false,
-      "default": "celsius",
+      "default": "v6",
       "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
+        {
+          "value": "v6",
+          "label": {
+            "en": "v6 (iBox 1, iBox 2)",
+            "fr": "v6 (iBox 1, iBox 2)"
+          }
+        },
+        {
+          "value": "legacy",
+          "label": {
+            "en": "Legacy (v3 to v5)",
+            "fr": "Ancien (v3 à v5)"
+          }
+        }
       ]
     },
     {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
+      "key": "full_color_zones",
+      "type": "multi_select",
+      "label": {
+        "en": "RGB+CCT zones",
+        "fr": "Zones RGB+CCT"
+      },
       "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+        "en": "Zones of the colour and tunable white lamps (RGB+CCT, also sold as RGBWW). v6 bridge only.",
+        "fr": "Zones des lampes couleur et blanc réglable (RGB+CCT, aussi vendues RGBWW). Pont v6 seulement."
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": [],
+      "options": [
+        {
+          "value": "1",
+          "label": {
+            "en": "Zone 1",
+            "fr": "Zone 1"
+          }
+        },
+        {
+          "value": "2",
+          "label": {
+            "en": "Zone 2",
+            "fr": "Zone 2"
+          }
+        },
+        {
+          "value": "3",
+          "label": {
+            "en": "Zone 3",
+            "fr": "Zone 3"
+          }
+        },
+        {
+          "value": "4",
+          "label": {
+            "en": "Zone 4",
+            "fr": "Zone 4"
+          }
+        }
+      ]
+    },
+    {
+      "key": "rgbw_zones",
+      "type": "multi_select",
+      "label": {
+        "en": "RGBW zones",
+        "fr": "Zones RGBW"
+      },
+      "description": {
+        "en": "Zones of the colour lamps with a single white (RGBW).",
+        "fr": "Zones des lampes couleur à blanc unique (RGBW)."
+      },
+      "required": false,
+      "default": [],
+      "options": [
+        {
+          "value": "1",
+          "label": {
+            "en": "Zone 1",
+            "fr": "Zone 1"
+          }
+        },
+        {
+          "value": "2",
+          "label": {
+            "en": "Zone 2",
+            "fr": "Zone 2"
+          }
+        },
+        {
+          "value": "3",
+          "label": {
+            "en": "Zone 3",
+            "fr": "Zone 3"
+          }
+        },
+        {
+          "value": "4",
+          "label": {
+            "en": "Zone 4",
+            "fr": "Zone 4"
+          }
+        }
+      ]
+    },
+    {
+      "key": "white_zones",
+      "type": "multi_select",
+      "label": {
+        "en": "Dual white zones",
+        "fr": "Zones blanc double"
+      },
+      "description": {
+        "en": "Zones of the dual white lamps (CCT): on and off only, their brightness has no level.",
+        "fr": "Zones des lampes blanc double (CCT) : allumer et éteindre seulement, leur luminosité n’a pas de niveau."
+      },
+      "required": false,
+      "default": [],
+      "options": [
+        {
+          "value": "1",
+          "label": {
+            "en": "Zone 1",
+            "fr": "Zone 1"
+          }
+        },
+        {
+          "value": "2",
+          "label": {
+            "en": "Zone 2",
+            "fr": "Zone 2"
+          }
+        },
+        {
+          "value": "3",
+          "label": {
+            "en": "Zone 3",
+            "fr": "Zone 3"
+          }
+        },
+        {
+          "value": "4",
+          "label": {
+            "en": "Zone 4",
+            "fr": "Zone 4"
+          }
+        }
+      ]
+    },
+    {
+      "key": "bridge_lamp",
+      "type": "boolean",
+      "label": {
+        "en": "Lamp of the iBox 1 bridge",
+        "fr": "Lampe du pont iBox 1"
+      },
+      "description": {
+        "en": "Creates the lamp built into the iBox 1 bridge. v6 bridge only.",
+        "fr": "Crée la lampe intégrée au pont iBox 1. Pont v6 seulement."
+      },
+      "required": false,
+      "default": false
+    },
+    {
+      "key": "language",
+      "type": "select",
+      "label": {
+        "en": "Language of the device names",
+        "fr": "Langue des noms d’appareils"
+      },
+      "required": false,
+      "default": "fr",
+      "options": [
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français"
+          }
+        },
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
-      "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
-    }
-  ],
-  "scene_triggers": [
-    {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
-      "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+      "key": "test_bridge",
+      "label": {
+        "en": "Test the bridge",
+        "fr": "Tester le pont"
       },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
-        }
-      ],
-      "variables": [
-        {
-          "key": "target",
-          "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
-        }
-      ]
-    }
-  ],
-  "scene_actions": [
-    {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
-      },
-      "timeout_seconds": 15,
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ],
-      "outputs": [
-        {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
-        }
-      ]
-    }
-  ],
-  "widgets": [
-    {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
-      },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "timeout_seconds": 10
     }
   ]
 }

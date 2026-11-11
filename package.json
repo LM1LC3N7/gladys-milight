@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
-  "version": "1.0.0",
+  "name": "gladys-milight",
+  "version": "0.1.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "Gladys Assistant external integration for MiLight / LimitlessLED lamps through their Wi-Fi bridge (iBox v6 or legacy v3-v5), on the local network. Unofficial.",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,11 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node --test"
+    "test": "node --test --test-timeout=60000",
+    "audit": "npm audit --omit=dev",
+    "cover": "node scripts/cover.mjs",
+    "mutants": "node scripts/mutants.mjs",
+    "validate:manifest": "npx --yes github:GladysAssistant/integration-store ."
   },
   "engines": {
     "node": ">=22"
@@ -25,5 +29,9 @@
     "globals": "^17.13.0",
     "prettier": "^3.9.9"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LM1LC3N7/gladys-milight.git"
+  }
 }
