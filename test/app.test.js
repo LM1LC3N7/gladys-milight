@@ -34,6 +34,7 @@ async function setup(
     connect = true,
     port,
     getConfig,
+    timings = TIMINGS,
   } = {},
 ) {
   if (!bridge && port === undefined) bridge = await startBridge({ version });
@@ -63,6 +64,7 @@ async function setup(
     now: clock.now,
     monotonic: clock.monotonic,
     timers: clock.timers,
+    timings,
   });
   registerHandlers(gladys, app, quietLogger(logs));
   t.after(async () => {
@@ -654,4 +656,43 @@ test('a held off from /data is older than a command clicked before /data was rea
   const list = bridge.orders({ lamp: 'rgbw-1' }).map((o) => o.action);
   assert.equal(list.at(-1), 'on', `nothing after the newer on: ${list}`);
   assert.equal(app.held.has('rgbw-1'), false);
+});
+
+for (const delay of [150, 1000]) {
+  test(`an "on" that left ${delay} ms after an unacknowledged "off" stops it for good (review r2 G1)`, async (t) => {
+    const timings = { ...TIMINGS, heldRetry: 1500 };
+    const { gladys, bridge, app, clock } = await setup(t, { timings });
+    bridge.dropAck = (order) => order.lamp === 'rgbw-1' && order.action === 'off';
+    const off = set(gladys, 'rgbw-1', 'binary', 0);
+    await clock.wait(delay);
+    assert.equal((await set(gladys, 'rgbw-1', 'binary', 1)).success, true);
+    const offAck = await off;
+    assert.equal(offAck.success, false);
+    assert.match(offAck.error, /overtaken/);
+    const onAt = bridge.orders({ lamp: 'rgbw-1', action: 'on' })[0].at;
+    await clock.wait(4 * timings.heldRetry);
+    const after = bridge.orders({ lamp: 'rgbw-1', action: 'off' }).filter((o) => o.at > onAt);
+    assert.equal(after.length, 0, 'no off after the newer on');
+    assert.equal(app.held.has('rgbw-1'), false);
+  });
+}
+
+test('a held off whose retry is overtaken is released when the retry ends, not later', async (t) => {
+  const speed = 2;
+  const timings = { ...TIMINGS, heldRetry: 3000 };
+  const { gladys, bridge, app, clock } = await setup(t, { speed, timings });
+  bridge.dropAck = (order) => order.lamp === 'rgbw-1';
+  const clicked = clock.monotonic();
+  assert.equal((await set(gladys, 'rgbw-1', 'binary', 0)).success, false);
+  assert.ok(app.held.has('rgbw-1'));
+  // The retry starts about 3 s after the hold; an "on" leaves 1 s into it, its acknowledgement lost.
+  await until(() => bridge.orders({ lamp: 'rgbw-1', action: 'off' }).length > 3, 10_000, 'retry');
+  const retryAt = clock.monotonic();
+  await clock.wait(1000);
+  const on = set(gladys, 'rgbw-1', 'binary', 1);
+  // The retry ends at its 3.4 s budget, the "on" at its own, 1 s later.
+  await clock.wait(retryAt + TIMINGS.ackBudget + 400 - clock.monotonic());
+  assert.equal(app.held.has('rgbw-1'), false, 'released when the overtaken retry ended');
+  await on;
+  assert.ok(clicked > 0);
 });

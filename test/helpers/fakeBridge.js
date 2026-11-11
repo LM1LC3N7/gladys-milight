@@ -55,6 +55,8 @@ export async function startBridge({ version = 'v6', mac = MAC, session = [0x05, 
     ackSilent: false,
     /** Orders not acknowledged (the next n). */
     dropAcks: 0,
+    /** Orders whose acknowledgement is lost: (order) => boolean. */
+    dropAck: undefined,
     /** Acknowledgements with a wrong sequence number. */
     wrongSeq: false,
     /** Answers sent from another socket (another port of the same host). */
@@ -144,7 +146,7 @@ export async function startBridge({ version = 'v6', mac = MAC, session = [0x05, 
     }
     const seq = msg[8];
     bridge.packets.push({ at, bytes: [...msg], type: 'order', seq, ...decodeV6(msg) });
-    if (bridge.ackSilent) return;
+    if (bridge.ackSilent || bridge.dropAck?.(bridge.packets.at(-1))) return;
     if (bridge.dropAcks > 0) {
       bridge.dropAcks -= 1;
       return;

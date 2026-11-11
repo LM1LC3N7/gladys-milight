@@ -219,7 +219,9 @@
     "name": "a newer off does not take over the hold",
     "file": "src/app.js",
     "from": "if (this.lastOff.get(zone) !== id) throw commandError(ERRORS.offUnconfirmed);",
-    "to": ""
+    "to": "",
+    "equivalent": true,
+    "why": "since r2 sendOff() returns overtaken when any newer command of the lamp left, a newer off included: the older off is never held, with or without this check (kept as a second guard)"
   },
   {
     "name": "review r1 R1 held off not written to /data",
@@ -231,9 +233,7 @@
     "name": "review r1 R2 held off kept when its resend is overtaken",
     "file": "src/app.js",
     "from": "if (outcome.overtaken) {\n      this.release(zone, { lost: false });\n      return false;\n    }",
-    "to": "",
-    "equivalent": true,
-    "why": "newerLeft() releases the held off as soon as the newer command leaves; this branch only does it a little earlier"
+    "to": ""
   },
   {
     "name": "review r1 R3 first MAC never pinned",
@@ -303,7 +303,9 @@
     "name": "held off from /data restored over a command that already left",
     "file": "src/app.js",
     "from": "        if ((this.link?.lastSent.get(zone) ?? 0) > 0) {\n          this.release(zone, { lost: false });\n          continue;\n        }\n",
-    "to": ""
+    "to": "",
+    "equivalent": true,
+    "why": "doubled by the check at the start of retryHeld(): a restored off (number 0) is released before any datagram when a command of the lamp already left"
   },
   {
     "name": "off held while /data was unreadable never written",
@@ -316,5 +318,27 @@
     "file": "src/store.js",
     "from": "parseAddress(b.host).address?.host === b.host &&",
     "to": ""
+  },
+  {
+    "name": "r2 I4: an unconfirmed off overtaken late is still taken as not overtaken",
+    "file": "src/app.js",
+    "from": "if (!outcome.confirmed && (link.lastSent.get(zone) ?? 0) > id) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "r2 I4: off held over a newer command that left",
+    "file": "src/app.js",
+    "from": "if (outcome.overtaken || (link.lastSent.get(zone) ?? 0) > id) {",
+    "to": "if (outcome.overtaken) {",
+    "equivalent": true,
+    "why": "doubled by sendOff(), whose finish() marks the off overtaken when a newer command of the lamp left; kept as an explicit guard before hold()"
+  },
+  {
+    "name": "r2 I4: first send of a retry over a newer command that left",
+    "file": "src/app.js",
+    "from": "    if ((link.lastSent.get(zone) ?? 0) > entry.id) {\n      this.release(zone, { lost: false });\n      return false;\n    }\n",
+    "to": "",
+    "equivalent": true,
+    "why": "doubled by newerLeft() (a command that left releases the hold when it is answered, within 3.4 s, long before the next retry 30 s later) and, after a restart, by the check at load"
   }
 ]

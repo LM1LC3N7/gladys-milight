@@ -533,7 +533,9 @@ export class MilightApp {
       this.release(zone, { lost: false });
       return;
     }
-    if (outcome.overtaken) throw commandError(ERRORS.overtaken);
+    if (outcome.overtaken || (link.lastSent.get(zone) ?? 0) > id) {
+      throw commandError(ERRORS.overtaken);
+    }
     // A newer "off" of the lamp took over: it holds itself if it needs to.
     if (this.lastOff.get(zone) !== id) throw commandError(ERRORS.offUnconfirmed);
     this.hold(zone, id, this.timings.heldFor, { at: this.now() });
@@ -555,6 +557,11 @@ export class MilightApp {
       const total = 1 + this.timings.offResends.length;
       const finish = (outcome) => {
         if (done) return;
+        // Not confirmed and a newer command of the lamp left (whenever it left):
+        // overtaken, never held nor sent again over it.
+        if (!outcome.confirmed && (link.lastSent.get(zone) ?? 0) > id) {
+          outcome = { ...outcome, overtaken: true };
+        }
         done = true;
         this.timers.clearTimeout(budget);
         resolve(outcome);
@@ -667,6 +674,11 @@ export class MilightApp {
     }
     if (!bridge) return true;
     const link = this.useBridge(bridge);
+    // The first send of a retry follows the rule of the resends: never over a newer command that left.
+    if ((link.lastSent.get(zone) ?? 0) > entry.id) {
+      this.release(zone, { lost: false });
+      return false;
+    }
     const packets = packetsFor(bridge.version, lamp.kind, lamp.zone, 'off');
     if (!packets) {
       this.release(zone, { lost: true });
