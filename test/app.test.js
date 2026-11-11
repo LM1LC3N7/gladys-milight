@@ -548,3 +548,110 @@ test('a newer off takes over: the older one, unconfirmed, holds nothing', async 
   assert.equal(app.held.has('rgbw-1'), false, 'no stale hold');
   assert.doesNotMatch(badge(gladys, 'rgbw-1').message.en, /not confirmed/);
 });
+
+test('a held off from /data never leaves after a newer "on", even with a slow /data and a legacy bridge', async (t) => {
+  const bridge = await startBridge({ version: 'legacy' });
+  const clock = speedClock(SPEED);
+  const inner = memoryStore({
+    bridge: { host: '127.0.0.1', port: bridge.port, version: 'legacy' },
+    held: { 'rgbw-1': clock.now() - 60_000 },
+  });
+  // /data answers 1.5 s (of the sped-up clock) after being asked.
+  const store = {
+    load: () => new Promise((resolve) => setTimeout(() => resolve(inner.load()), 1500 / SPEED)),
+    save: (data) => inner.save(data),
+  };
+  const { gladys, app } = await setup(t, { bridge, version: 'legacy', store, connect: false });
+  await gladys.connect();
+  await until(() => app.configRead, 3000, 'config');
+  assert.equal(app.memory, undefined, '/data not read yet');
+  assert.equal((await set(gladys, 'rgbw-1', 'binary', 1)).success, true);
+  await until(() => app.memory !== undefined, 3000, '/data read');
+  await clock.wait(TIMINGS.heldRetry + 2000);
+  const list = bridge.orders({ lamp: 'rgbw-1' }).map((o) => o.action);
+  assert.deepEqual(list, ['on'], `nothing after the newer on: ${list}`);
+  assert.equal(app.held.has('rgbw-1'), false);
+  assert.equal(inner.data.held['rgbw-1'], undefined, 'dropped from /data too');
+});
+
+test('a held off from /data still leaves when the newer command of the lamp has not left yet', async (t) => {
+  const bridge = await startBridge();
+  const clock = speedClock(SPEED);
+  const store = memoryStore({
+    bridge: { host: '127.0.0.1', port: bridge.port, version: 'v6' },
+    held: { 'rgbw-2': clock.now() - 60_000 },
+  });
+  const { gladys, app } = await setup(t, { bridge, store });
+  await until(() => bridge.orders({ lamp: 'rgbw-2', action: 'off' }).length >= 1);
+  assert.equal((await set(gladys, 'rgbw-2', 'binary', 1)).success, true);
+  await until(() => !app.held.has('rgbw-2'));
+  await clock.wait(2000);
+  assert.equal(bridge.orders({ lamp: 'rgbw-2' }).at(-1).action, 'on');
+});
+
+test('a fresh install pins the first MAC address; another bridge then gets "off" only', async (t) => {
+  const store = memoryStore();
+  const { gladys, bridge, app, clock } = await setup(t, { store });
+  assert.equal((await set(gladys, 'rgbw-1', 'binary', 1)).success, true);
+  await until(() => store.data?.mac === MAC, 2000, 'pinned');
+  bridge.mac = '02:00:00:00:00:01';
+  await clock.wait(TIMINGS.sessionFresh + 1000);
+  const before = bridge.orders({ action: 'on' }).length;
+  const on = await set(gladys, 'rgbw-1', 'binary', 1);
+  assert.match(on.error, /Another bridge.*nothing sent/);
+  assert.equal(bridge.orders({ action: 'on' }).length, before);
+  assert.equal((await set(gladys, 'rgbw-1', 'binary', 0)).success, true);
+  assert.equal(store.data.mac, MAC, 'the pin is kept');
+  assert.equal(app.seenMac, '02:00:00:00:00:01');
+});
+
+test('an off held while /data was unreadable is written to it once it reads again', async (t) => {
+  const store = memoryStore({ mac: MAC });
+  store.unreadable = true;
+  const { gladys, bridge, app, clock } = await setup(t, { store });
+  bridge.ackSilent = true;
+  assert.equal((await set(gladys, 'rgbw-3', 'binary', 0)).success, false);
+  assert.ok(app.held.has('rgbw-3'));
+  store.unreadable = false;
+  await clock.wait(TIMINGS.storeRetry + 1000);
+  await until(() => app.memory !== undefined, 3000, 'read');
+  await until(() => Number.isFinite(store.data.held?.['rgbw-3']), 2000, 'written');
+});
+
+test('an off to a mute v6 bridge is answered within 3.5 s', async (t) => {
+  const speed = 4;
+  const { gladys, bridge } = await setup(t, { speed });
+  bridge.silent = true;
+  const clicked = performance.now();
+  const ack = await set(gladys, 'rgbw-1', 'binary', 0);
+  const took = (performance.now() - clicked) * speed;
+  assert.equal(ack.success, false);
+  assert.ok(took < 3600, `answered after ${Math.round(took)} ms`);
+});
+
+test('a held off from /data is older than a command clicked before /data was read but not sent yet', async (t) => {
+  const bridge = await startBridge({ version: 'legacy' });
+  const clock = speedClock(SPEED);
+  const inner = memoryStore({
+    bridge: { host: '127.0.0.1', port: bridge.port, version: 'legacy' },
+    held: { 'rgbw-1': clock.now() - 60_000 },
+  });
+  let release;
+  const gate = new Promise((resolve) => (release = resolve));
+  const store = { load: () => gate.then(() => inner.load()), save: (data) => inner.save(data) };
+  const { gladys, app } = await setup(t, { bridge, version: 'legacy', store, connect: false });
+  await gladys.connect();
+  await until(() => app.configRead, 3000, 'config');
+  // The sender is busy with another lamp: the "on" of rgbw-1 waits in the queue.
+  const busy = set(gladys, 'rgbw-2', 'brightness', 50);
+  const on = set(gladys, 'rgbw-1', 'binary', 1);
+  release();
+  await until(() => app.memory !== undefined, 3000, '/data read');
+  assert.equal(bridge.orders({ lamp: 'rgbw-1' }).length, 0, 'the "on" has not left yet');
+  assert.equal((await on).success, true);
+  await busy;
+  await clock.wait(TIMINGS.heldRetry + 2000);
+  const list = bridge.orders({ lamp: 'rgbw-1' }).map((o) => o.action);
+  assert.equal(list.at(-1), 'on', `nothing after the newer on: ${list}`);
+  assert.equal(app.held.has('rgbw-1'), false);
+});

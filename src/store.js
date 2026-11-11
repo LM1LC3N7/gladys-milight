@@ -16,6 +16,7 @@
 // -----------------------------------------------------------------------------
 
 import { readFile, rename, writeFile } from 'node:fs/promises';
+import { parseAddress } from './config.js';
 import { LIMITS, VERSIONS } from './constants.js';
 import { lampOf } from './devices.js';
 
@@ -75,7 +76,6 @@ const object = (value) =>
 const time = (value, now) =>
   Number.isFinite(value) && value > 0 && value <= now ? value : undefined;
 const MAC = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/;
-const HOST = /^\d{1,3}(\.\d{1,3}){3}$/;
 
 /** The persisted state, repaired and bounded. */
 export function normalizeMemory(raw, now, heldFor) {
@@ -83,7 +83,8 @@ export function normalizeMemory(raw, now, heldFor) {
   const b = object(data.bridge);
   const bridge =
     typeof b.host === 'string' &&
-    HOST.test(b.host) &&
+    // The same rule as the configuration: one unicast IPv4 address, never a broadcast.
+    parseAddress(b.host).address?.host === b.host &&
     Number.isInteger(b.port) &&
     b.port > 0 &&
     b.port < 65536 &&

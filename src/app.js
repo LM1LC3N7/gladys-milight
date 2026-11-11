@@ -236,12 +236,26 @@ export class MilightApp {
         this.saveMemory();
       }
       if (this.seenMac && !this.memory.mac) this.pin(this.seenMac);
-      // Offs held before the restart leave at once, before the configuration is read.
-      const wall = this.now();
-      for (const [id, at] of Object.entries(this.memory.held)) {
-        if (!this.held.has(id)) {
-          this.hold(id, this.seq, this.timings.heldFor - (wall - at), { at, now: true });
+      // Offs held while /data could not be read: written now.
+      let missing = false;
+      for (const [zone, entry] of this.held) {
+        if (!Object.hasOwn(this.memory.held, zone)) {
+          this.memory.held[zone] = entry.at;
+          missing = true;
         }
+      }
+      if (missing) this.saveMemory();
+      // Offs held before the restart leave at once, before the configuration is read.
+      // They are older than every command of this session (number 0): a command of
+      // the lamp that already left drops them, one that leaves later stops them.
+      const wall = this.now();
+      for (const [zone, at] of Object.entries(this.memory.held)) {
+        if (this.held.has(zone)) continue;
+        if ((this.link?.lastSent.get(zone) ?? 0) > 0) {
+          this.release(zone, { lost: false });
+          continue;
+        }
+        this.hold(zone, 0, this.timings.heldFor - (wall - at), { at, now: true });
       }
       this.scheduleCheck();
       await this.publishStatus();
@@ -623,7 +637,7 @@ export class MilightApp {
       return;
     }
     this.lost.delete(zone);
-    const entry = { id, until: this.monotonic() + left, timer: undefined };
+    const entry = { id, at, until: this.monotonic() + left, timer: undefined };
     this.held.set(zone, entry);
     if (this.memory) {
       this.memory.held[zone] = at;

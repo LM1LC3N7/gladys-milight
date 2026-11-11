@@ -134,8 +134,8 @@
   {
     "name": "held off from /data waits 30 s after a restart",
     "file": "src/app.js",
-    "from": "this.hold(id, this.seq, this.timings.heldFor - (wall - at), { at, now: true });",
-    "to": "this.hold(id, this.seq, this.timings.heldFor - (wall - at), { at });"
+    "from": "this.hold(zone, 0, this.timings.heldFor - (wall - at), { at, now: true });",
+    "to": "this.hold(zone, 0, this.timings.heldFor - (wall - at), { at });"
   },
   {
     "name": "off needs the configuration read",
@@ -219,6 +219,102 @@
     "name": "a newer off does not take over the hold",
     "file": "src/app.js",
     "from": "if (this.lastOff.get(zone) !== id) throw commandError(ERRORS.offUnconfirmed);",
+    "to": ""
+  },
+  {
+    "name": "review r1 R1 held off not written to /data",
+    "file": "src/app.js",
+    "from": "this.memory.held[zone] = at;",
+    "to": "void at;"
+  },
+  {
+    "name": "review r1 R2 held off kept when its resend is overtaken",
+    "file": "src/app.js",
+    "from": "if (outcome.overtaken) {\n      this.release(zone, { lost: false });\n      return false;\n    }",
+    "to": "",
+    "equivalent": true,
+    "why": "newerLeft() releases the held off as soon as the newer command leaves; this branch only does it a little earlier"
+  },
+  {
+    "name": "review r1 R3 first MAC never pinned",
+    "file": "src/app.js",
+    "from": "if (this.memory && !this.memory.mac) this.pin(mac);",
+    "to": ""
+  },
+  {
+    "name": "review r1 R4 0.x.x.x accepted",
+    "file": "src/config.js",
+    "from": "octets[0] === 0 ||",
+    "to": ""
+  },
+  {
+    "name": "review r1 R5 multicast/class E accepted",
+    "file": "src/config.js",
+    "from": "octets[0] >= 224 ||",
+    "to": ""
+  },
+  {
+    "name": "review r1 R6 all-zero MAC accepted",
+    "file": "src/protocol.js",
+    "from": "macBytes.every((b) => b === 0) ||",
+    "to": ""
+  },
+  {
+    "name": "review r1 R7 expired held off kept from /data",
+    "file": "src/store.js",
+    "from": "now - t < heldFor",
+    "to": "true"
+  },
+  {
+    "name": "review r1 R8 identity ok with /data unread (guard path)",
+    "file": "src/app.js",
+    "from": "if (!this.memory) return false;\n    return !this.memory.mac",
+    "to": "return !this.memory?.mac",
+    "equivalent": true,
+    "why": "command() refuses a v6 command before the link while /data is unread, so the guard never sees memory undefined"
+  },
+  {
+    "name": "review r1 R9 ack trailer not checked",
+    "file": "src/protocol.js",
+    "from": "return buf[7] === 0x00 ? buf[6] : undefined;",
+    "to": "return buf[6];"
+  },
+  {
+    "name": "review r1 R10 off answer budget doubled",
+    "file": "src/app.js",
+    "from": "        this.timings.ackBudget,\n      );",
+    "to": "        this.timings.ackBudget * 2,\n      );"
+  },
+  {
+    "name": "review r1 R11 oversized datagram accepted",
+    "file": "src/link.js",
+    "from": " || msg.length > LIMITS.datagram) return;",
+    "to": ") return;",
+    "equivalent": true,
+    "why": "parseAck and parseSession require an exact length (8 and 22 bytes): a longer datagram is ignored anyway"
+  },
+  {
+    "name": "held off from /data numbered like the session (older than nothing)",
+    "file": "src/app.js",
+    "from": "this.hold(zone, 0, this.timings.heldFor - (wall - at), { at, now: true });",
+    "to": "this.hold(zone, this.seq, this.timings.heldFor - (wall - at), { at, now: true });"
+  },
+  {
+    "name": "held off from /data restored over a command that already left",
+    "file": "src/app.js",
+    "from": "        if ((this.link?.lastSent.get(zone) ?? 0) > 0) {\n          this.release(zone, { lost: false });\n          continue;\n        }\n",
+    "to": ""
+  },
+  {
+    "name": "off held while /data was unreadable never written",
+    "file": "src/app.js",
+    "from": "      if (missing) this.saveMemory();",
+    "to": ""
+  },
+  {
+    "name": "address of /data not checked",
+    "file": "src/store.js",
+    "from": "parseAddress(b.host).address?.host === b.host &&",
     "to": ""
   }
 ]

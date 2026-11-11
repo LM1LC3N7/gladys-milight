@@ -102,3 +102,48 @@ test('close: every wait ends, nothing left pending', async () => {
     (e) => e.kind === 'closed',
   );
 });
+
+test('an "off" answers the waiting commands of its lamp "cancelled" at once, before its first datagram', async (t) => {
+  const socket = scriptedSocket();
+  const link = new Link({
+    bridge: { host: '10.0.0.2', port: 8899, version: 'legacy' },
+    open: socket.open,
+    timers: globalThis,
+    monotonic: () => performance.now(),
+    timings: { ...TIMINGS, gap: 200 },
+  });
+  t.after(() => link.close());
+  const busy = link.submit({
+    id: 1,
+    zone: 'rgbw-2',
+    packets: packetsFor('legacy', 'rgbw', 2, 'brightness', 50),
+  });
+  const waiting = link.submit({
+    id: 2,
+    zone: 'rgbw-1',
+    packets: packetsFor('legacy', 'rgbw', 1, 'on'),
+  });
+  await until(() => socket.sent.length === 1, 1000, 'first datagram');
+  const off = link.submit({
+    id: 3,
+    zone: 'rgbw-1',
+    packets: packetsFor('legacy', 'rgbw', 1, 'off'),
+    protective: true,
+  });
+  let sentAtCancel;
+  await assert.rejects(
+    waiting.catch((err) => {
+      sentAtCancel = socket.sent.length;
+      throw err;
+    }),
+    (err) => err.kind === 'cancelled' && err.sent === 0,
+  );
+  assert.equal(sentAtCancel, 1, 'answered before the off left');
+  assert.equal(
+    link.queue.filter((j) => j.zone === 'rgbw-1' && !j.protective).length,
+    0,
+    'place freed',
+  );
+  await off;
+  await busy;
+});

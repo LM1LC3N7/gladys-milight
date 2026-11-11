@@ -129,6 +129,7 @@ test('address: IPv4 of the bridge only, never a broadcast, multicast or "any"; n
     '224.0.0.1',
     '239.1.2.3',
     '10.0.0.0',
+    '0.1.2.3',
   ]) {
     assert.deepEqual(parseAddress(bad), { broadcast: true }, bad);
   }
@@ -243,6 +244,10 @@ test('/data: future times invalid, old held offs dropped, bad values ignored', (
     undefined,
   );
   assert.deepEqual(normalizeMemory('garbage', now, 1).held, {});
+  for (const host of ['255.255.255.255', '224.0.0.251', '0.0.0.0', '192.168.1.255', '999.1.1.1']) {
+    const m = normalizeMemory({ bridge: { host, port: 5987, version: 'v6' } }, now, 1);
+    assert.equal(m.bridge, undefined, host);
+  }
 });
 
 test('/data file: missing is empty, unreadable is not; written 0600 in one piece', async (t) => {
