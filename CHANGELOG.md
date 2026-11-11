@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-11
+
 ### Added
 
 - MiLight / LimitlessLED lamps through their Wi-Fi bridge, on the local
@@ -25,3 +27,6 @@ the notes of the version's GitHub Release.
 - The MAC address of the v6 bridge pinned: another bridge at the address gets
   "off" only until "Test the bridge" is pressed twice.
 - "Test the bridge" button; a v6 bridge checked at most every 5 min.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-milight/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-milight/releases/tag/v0.1.1

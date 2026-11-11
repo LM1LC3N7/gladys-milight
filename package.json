@@ -1,6 +1,6 @@
 {
   "name": "gladys-milight",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Gladys Assistant external integration for MiLight / LimitlessLED lamps through their Wi-Fi bridge (iBox v6 or legacy v3-v5), on the local network. Unofficial.",
   "type": "module",
